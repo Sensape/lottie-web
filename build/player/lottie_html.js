@@ -9819,9 +9819,11 @@ var animationManager = (function(){
             }
             i+=1;
         }
+        console.log("registering animation in lottie player")
         var animItem = new AnimationItem();
         setupAnimation(animItem, element);
         animItem.setData(element, animationData);
+        console.log("registered", animItem);
         return animItem;
     }
 
@@ -10031,6 +10033,7 @@ var AnimationItem = function () {
     this._completedLoop = false;
     this.projectInterface = ProjectInterface();
     this.imagePreloader = new ImagePreloader();
+    console.log("New Animation Item", this)
 };
 
 extendPrototype([BaseEvent], AnimationItem);

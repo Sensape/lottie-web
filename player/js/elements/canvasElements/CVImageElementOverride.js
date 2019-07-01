@@ -3,7 +3,6 @@ function CVImageElement(data, globalData, comp){
     
     this.assetData = globalData.getAssetData(data.refId);
     this.img = globalData.imageLoader.getImage(this.assetData);
-    console.log("CVImageElement", this.assetData, this.img);
     this.initElement(data,globalData,comp);
 }
 extendPrototype([BaseElement, TransformElement, CVBaseElement, HierarchyElement, FrameElement, RenderableElement], CVImageElement);

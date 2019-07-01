@@ -47,7 +47,7 @@ var ImagePreloader = (function(){
             fetch(path, { mode: 'cors' })
             .then(response => response.blob())
             .then(blob => createImageBitmap(blob))
-            .then(bitmap => {
+            .then(bitmap =>  {
                 img.src = path;
                 var ob = {
                     img: bitmap,
