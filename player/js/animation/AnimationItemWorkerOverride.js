@@ -81,6 +81,16 @@ AnimationItem.prototype.loadSegments = function() {
     }
     this.loadNextSegment();
 };
+//by CS
+AnimationItem.prototype.getAssetData = function (id) {
+    var i = 0, len = this.assets.length;
+    while (i < len) {
+        if(id == this.assets[i].id){
+            return this.assets[i];
+        }
+        i += 1;
+    }
+};
 
 AnimationItem.prototype.imagesLoaded = null;
 
@@ -120,6 +130,7 @@ AnimationItem.prototype.checkLoaded = function () {
         this.gotoFrame();
     }
 };
+
 
 AnimationItem.prototype.destroy = function (name) {
     if ((name && this.name != name) || !this.renderer) {

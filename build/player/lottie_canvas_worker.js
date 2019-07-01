@@ -7980,6 +7980,7 @@ CVBaseElement.prototype.show = CVBaseElement.prototype.showElement;
 
 function CVImageElement(data, globalData, comp){
     this.failed = false;
+    console.log(assetData);
     this.assetData = globalData.getAssetData(data.refId);
     this.img = globalData.imageLoader.getImage(this.assetData);
     this.initElement(data,globalData,comp);
@@ -9668,6 +9669,16 @@ AnimationItem.prototype.loadSegments = function() {
     }
     this.loadNextSegment();
 };
+//by CS
+AnimationItem.prototype.getAssetData = function (id) {
+    var i = 0, len = this.assets.length;
+    while (i < len) {
+        if(id == this.assets[i].id){
+            return this.assets[i];
+        }
+        i += 1;
+    }
+};
 
 AnimationItem.prototype.imagesLoaded = null;
 
@@ -9707,6 +9718,7 @@ AnimationItem.prototype.checkLoaded = function () {
         this.gotoFrame();
     }
 };
+
 
 AnimationItem.prototype.destroy = function (name) {
     if ((name && this.name != name) || !this.renderer) {

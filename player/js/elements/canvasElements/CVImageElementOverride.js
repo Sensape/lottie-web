@@ -1,5 +1,6 @@
 function CVImageElement(data, globalData, comp){
     this.failed = false;
+    console.log(globalData);
     this.assetData = globalData.getAssetData(data.refId);
     this.img = globalData.imageLoader.getImage(this.assetData);
     this.initElement(data,globalData,comp);

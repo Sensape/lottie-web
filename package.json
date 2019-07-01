@@ -8,7 +8,8 @@
     "url": "https://github.com/airbnb/lottie-web.git"
   },
   "scripts": {
-    "build": "node tasks/build.js"
+    "build": "node tasks/build.js",
+    "develop": "npx serve ./player"
   },
   "keywords": [
     "animation",
@@ -23,5 +24,8 @@
     "uglify-js": "^3.4.9"
   },
   "types": "./index.d.ts",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "serve": "^11.0.2"
+  }
 }
