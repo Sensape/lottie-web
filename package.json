@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "node tasks/build.js",
-    "develop": "npx serve ./player"
+    "develop": "npx serve ./"
   },
   "keywords": [
     "animation",

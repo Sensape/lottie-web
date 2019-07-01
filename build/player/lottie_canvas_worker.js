@@ -4214,9 +4214,9 @@ var ImagePreloader = (function(){
         var path = getAssetsPath(assetData, this.assetsPath, this.path);
           if(!this._isDataURL(path)) {
             fetch(path, { mode: 'cors' })
-            .then(response => response.blob())
-            .then(blob => createImageBitmap(blob))
-            .then(bitmap => {
+            .then(function(response) { return response.blob()})
+            .then(function(blob) { return createImageBitmap(blob)})
+            .then(function(bitmap)  {
                 img.src = path;
                 var ob = {
                     img: bitmap,
@@ -4229,18 +4229,18 @@ var ImagePreloader = (function(){
         } else {
             console.log("Lottie Found data URL");
             dataURItoBlob(path)
-            .then((blob) => {
+            .then(function(blob) {
                 console.log("Lottie converted dataurl to blob", blob);
                 return createImageBitmap(blob)
             })            
-            .then(bitmap => {
+            .then(function(bitmap) {
                 console.log("Lottie storing image", bitmap);
                 var ob = {
                     img: bitmap,
                     assetData: assetData
                 }
-                this.images.push(ob);
-                this._imageLoaded.call(that);
+                that.images.push(ob);
+                that._imageLoaded.call(that);
             })
             .catch(console.warn);
         }
@@ -4300,7 +4300,7 @@ var ImagePreloader = (function(){
 
 
     function isDataURL(s) {
-        let regex = /^\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*$/i;
+        var regex = /^\s*data:([a-z]+\/[a-z]+(;[a-z\-]+\=[a-z\-]+)?)?(;base64)?,[a-z0-9\!\$\&\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*$/i;
         return !!s.match(regex);
     }
 
