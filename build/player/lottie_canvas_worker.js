@@ -1,15 +1,4 @@
-(typeof navigator !== "undefined") && (function(root, factory) {
-    if (typeof define === "function" && define.amd) {
-        define(function() {
-            return factory(root);
-        });
-    } else if (typeof module === "object" && module.exports) {
-        module.exports = factory(root);
-    } else {
-        root.lottie = factory(root);
-        root.bodymovin = root.lottie;
-    }
-}((window || {}), function(window) {
+var lottiejs = (function(window) {
     "use strict";
     var svgNS = "http://www.w3.org/2000/svg";
 
@@ -1775,6 +1764,17 @@ function dataFunctionManager(){
 
 var dataManager = dataFunctionManager();
 
+dataManager.completeData = function(animationData, fontManager) {
+    if(animationData.__complete){
+            return;
+        }
+        this.checkColors(animationData);
+        this.checkChars(animationData);
+        this.checkShapes(animationData);
+        this.completeLayers(animationData.layers, animationData.assets, fontManager);
+        animationData.__complete = true;
+}
+
 var FontManager = (function(){
 
     var maxWaitingTime = 5000;
@@ -2070,6 +2070,17 @@ var FontManager = (function(){
     return Font;
 
 }());
+FontManager = (function(){
+    var Font = function(){
+        this.fonts = [];
+        this.chars = null;
+        this.typekitLoaded = 0;
+        this.isLoaded = false;
+        this.initTime = Date.now();
+    };
+    return Font;
+}());
+
 var PropertyFactory = (function(){
 
     var initFrame = initialDefaultFrame;
@@ -4156,117 +4167,8 @@ var buildShapeString = function(pathNodes, length, closed, mat) {
         }
         return shapeString;
 }
-var ImagePreloader = (function(){
+var ImagePreloader = function() {};
 
-    var proxyImage = (function(){
-        var canvas = createTag('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
-        var ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#FF0000';
-        ctx.fillRect(0, 0, 1, 1);
-        return canvas;
-    }())
-
-    function imageLoaded(){
-        this.loadedAssets += 1;
-        if(this.loadedAssets === this.totalImages){
-            if(this.imagesLoadedCb) {
-                this.imagesLoadedCb(null);
-            }
-        }
-    }
-
-    function getAssetsPath(assetData, assetsPath, original_path) {
-        var path = '';
-        if (assetData.e) {
-            path = assetData.p;
-        } else if(assetsPath) {
-            var imagePath = assetData.p;
-            if (imagePath.indexOf('images/') !== -1) {
-                imagePath = imagePath.split('/')[1];
-            }
-            path = assetsPath + imagePath;
-        } else {
-            path = original_path;
-            path += assetData.u ? assetData.u : '';
-            path += assetData.p;
-        }
-        return path;
-    }
-
-    function createImageData(assetData) {
-        var path = getAssetsPath(assetData, this.assetsPath, this.path);
-        var img = createTag('img');
-        img.crossOrigin = 'anonymous';
-        img.addEventListener('load', this._imageLoaded.bind(this), false);
-        img.addEventListener('error', function() {
-            ob.img = proxyImage;
-            this._imageLoaded();
-        }.bind(this), false);
-        img.src = path;
-        var ob = {
-            img: img,
-            assetData: assetData
-        }
-        return ob;
-    }
-
-    function loadAssets(assets, cb){
-        this.imagesLoadedCb = cb;
-        var i, len = assets.length;
-        for (i = 0; i < len; i += 1) {
-            if(!assets[i].layers){
-                this.totalImages += 1;
-                this.images.push(this._createImageData(assets[i]));
-            }
-        }
-    }
-
-    function setPath(path){
-        this.path = path || '';
-    }
-
-    function setAssetsPath(path){
-        this.assetsPath = path || '';
-    }
-
-    function getImage(assetData) {
-        var i = 0, len = this.images.length;
-        while (i < len) {
-            if (this.images[i].assetData === assetData) {
-                return this.images[i].img;
-            }
-            i += 1;
-        }
-    }
-
-    function destroy() {
-        this.imagesLoadedCb = null;
-        this.images.length = 0;
-    }
-
-    function loaded() {
-        return this.totalImages === this.loadedAssets;
-    }
-
-    return function ImagePreloader(){
-        this.loadAssets = loadAssets;
-        this.setAssetsPath = setAssetsPath;
-        this.setPath = setPath;
-        this.loaded = loaded;
-        this.destroy = destroy;
-        this.getImage = getImage;
-        this._createImageData = createImageData;
-        this._imageLoaded = imageLoaded;
-        this.assetsPath = '';
-        this.path = '';
-        this.totalImages = 0;
-        this.loadedAssets = 0;
-        this.imagesLoadedCb = null;
-        this.images = [];
-    };
-}());
 var featureSupport = (function(){
 	var ob = {
 		maskType: true
@@ -4346,6 +4248,8 @@ var assetLoader = (function(){
 		load: loadAsset
 	}
 }())
+
+var assetLoader = null;
 
 function TextAnimatorProperty(textData, renderType, elem){
     this._isFirstFrame = true;
@@ -6427,6 +6331,49 @@ CanvasRenderer.prototype.show = function(){
     this.animationItem.container.style.display = 'block';
 };
 
+CanvasRenderer.prototype.configAnimation = function(animData){
+    if(this.animationItem.wrapper){
+        this.animationItem.container = createTag('canvas');
+        this.animationItem.container.style.width = '100%';
+        this.animationItem.container.style.height = '100%';
+        //this.animationItem.container.style.transform = 'translate3d(0,0,0)';
+        //this.animationItem.container.style.webkitTransform = 'translate3d(0,0,0)';
+        this.animationItem.container.style.transformOrigin = this.animationItem.container.style.mozTransformOrigin = this.animationItem.container.style.webkitTransformOrigin = this.animationItem.container.style['-webkit-transform'] = "0px 0px 0px";
+        this.animationItem.wrapper.appendChild(this.animationItem.container);
+        this.canvasContext = this.animationItem.container.getContext('2d');
+        if(this.renderConfig.className) {
+            this.animationItem.container.setAttribute('class', this.renderConfig.className);
+        }
+    }else{
+        this.canvasContext = this.renderConfig.context;
+    }
+    this.data = animData;
+    this.layers = animData.layers;
+    this.transformCanvas = {
+        w: animData.w,
+        h:animData.h,
+        sx:0,
+        sy:0,
+        tx:0,
+        ty:0
+    };
+    this.globalData.frameId = 0;
+    this.globalData.frameRate = animData.fr;
+    this.globalData.nm = animData.nm;
+    this.globalData.compSize = {
+        w: animData.w,
+        h: animData.h
+    }
+    this.globalData.canvasContext = this.canvasContext;
+    this.globalData.renderer = this;
+    this.globalData.isDashed = false;
+    this.globalData.progressiveLoad = this.renderConfig.progressiveLoad;
+    this.globalData.transformCanvas = this.transformCanvas;
+    this.elements = createSizedArray(animData.layers.length);
+
+    this.updateContainerSize();
+};
+
 function MaskElement(data,element,globalData) {
     this.data = data;
     this.element = element;
@@ -8079,6 +8026,7 @@ CVImageElement.prototype.renderInnerContent = function(parentMatrix){
 CVImageElement.prototype.destroy = function(){
     this.img = null;
 };
+
 function CVCompElement(data, globalData, comp) {
     this.completeLayers = false;
     this.layers = data.layers;
@@ -8640,197 +8588,6 @@ CVSolidElement.prototype.renderInnerContent = function() {
     ctx.fillRect(0, 0, this.data.sw, this.data.sh);
     //
 };
-function CVTextElement(data, globalData, comp){
-    this.textSpans = [];
-    this.yOffset = 0;
-    this.fillColorAnim = false;
-    this.strokeColorAnim = false;
-    this.strokeWidthAnim = false;
-    this.stroke = false;
-    this.fill = false;
-    this.justifyOffset = 0;
-    this.currentRender = null;
-    this.renderType = 'canvas';
-    this.values = {
-        fill: 'rgba(0,0,0,0)',
-        stroke: 'rgba(0,0,0,0)',
-        sWidth: 0,
-        fValue: ''
-    };
-    this.initElement(data,globalData,comp);
-}
-extendPrototype([BaseElement,TransformElement,CVBaseElement,HierarchyElement,FrameElement,RenderableElement,ITextElement], CVTextElement);
-
-CVTextElement.prototype.tHelper = createTag('canvas').getContext('2d');
-
-CVTextElement.prototype.buildNewText = function(){
-    var documentData = this.textProperty.currentData;
-    this.renderedLetters = createSizedArray(documentData.l ? documentData.l.length : 0);
-
-    var hasFill = false;
-    if(documentData.fc) {
-        hasFill = true;
-        this.values.fill = this.buildColor(documentData.fc);
-    }else{
-        this.values.fill = 'rgba(0,0,0,0)';
-    }
-    this.fill = hasFill;
-    var hasStroke = false;
-    if(documentData.sc){
-        hasStroke = true;
-        this.values.stroke = this.buildColor(documentData.sc);
-        this.values.sWidth = documentData.sw;
-    }
-    var fontData = this.globalData.fontManager.getFontByName(documentData.f);
-    var i, len;
-    var letters = documentData.l;
-    var matrixHelper = this.mHelper;
-    this.stroke = hasStroke;
-    this.values.fValue = documentData.finalSize + 'px '+ this.globalData.fontManager.getFontByName(documentData.f).fFamily;
-    len = documentData.finalText.length;
-    //this.tHelper.font = this.values.fValue;
-    var charData, shapeData, k, kLen, shapes, j, jLen, pathNodes, commands, pathArr, singleShape = this.data.singleShape;
-    var trackingOffset = documentData.tr/1000*documentData.finalSize;
-    var xPos = 0, yPos = 0, firstLine = true;
-    var cnt = 0;
-    for (i = 0; i < len; i += 1) {
-        charData = this.globalData.fontManager.getCharData(documentData.finalText[i], fontData.fStyle, this.globalData.fontManager.getFontByName(documentData.f).fFamily);
-        shapeData = charData && charData.data || {};
-        matrixHelper.reset();
-        if(singleShape && letters[i].n) {
-            xPos = -trackingOffset;
-            yPos += documentData.yOffset;
-            yPos += firstLine ? 1 : 0;
-            firstLine = false;
-        }
-
-        shapes = shapeData.shapes ? shapeData.shapes[0].it : [];
-        jLen = shapes.length;
-        matrixHelper.scale(documentData.finalSize/100,documentData.finalSize/100);
-        if(singleShape){
-            this.applyTextPropertiesToMatrix(documentData, matrixHelper, letters[i].line, xPos, yPos);
-        }
-        commands = createSizedArray(jLen);
-        for(j=0;j<jLen;j+=1){
-            kLen = shapes[j].ks.k.i.length;
-            pathNodes = shapes[j].ks.k;
-            pathArr = [];
-            for(k=1;k<kLen;k+=1){
-                if(k==1){
-                    pathArr.push(matrixHelper.applyToX(pathNodes.v[0][0],pathNodes.v[0][1],0),matrixHelper.applyToY(pathNodes.v[0][0],pathNodes.v[0][1],0));
-                }
-                pathArr.push(matrixHelper.applyToX(pathNodes.o[k-1][0],pathNodes.o[k-1][1],0),matrixHelper.applyToY(pathNodes.o[k-1][0],pathNodes.o[k-1][1],0),matrixHelper.applyToX(pathNodes.i[k][0],pathNodes.i[k][1],0),matrixHelper.applyToY(pathNodes.i[k][0],pathNodes.i[k][1],0),matrixHelper.applyToX(pathNodes.v[k][0],pathNodes.v[k][1],0),matrixHelper.applyToY(pathNodes.v[k][0],pathNodes.v[k][1],0));
-            }
-            pathArr.push(matrixHelper.applyToX(pathNodes.o[k-1][0],pathNodes.o[k-1][1],0),matrixHelper.applyToY(pathNodes.o[k-1][0],pathNodes.o[k-1][1],0),matrixHelper.applyToX(pathNodes.i[0][0],pathNodes.i[0][1],0),matrixHelper.applyToY(pathNodes.i[0][0],pathNodes.i[0][1],0),matrixHelper.applyToX(pathNodes.v[0][0],pathNodes.v[0][1],0),matrixHelper.applyToY(pathNodes.v[0][0],pathNodes.v[0][1],0));
-            commands[j] = pathArr;
-        }
-        if(singleShape){
-            xPos += letters[i].l;
-            xPos += trackingOffset;
-        }
-        if(this.textSpans[cnt]){
-            this.textSpans[cnt].elem = commands;
-        } else {
-            this.textSpans[cnt] = {elem: commands};
-        }
-        cnt +=1;
-    }
-};
-
-CVTextElement.prototype.renderInnerContent = function(){
-    var ctx = this.canvasContext;
-    var finalMat = this.finalTransform.mat.props;
-    ctx.font = this.values.fValue;
-    ctx.lineCap = 'butt';
-    ctx.lineJoin = 'miter';
-    ctx.miterLimit = 4;
-
-    if(!this.data.singleShape){
-        this.textAnimator.getMeasures(this.textProperty.currentData, this.lettersChangedFlag);
-    }
-
-    var  i,len, j, jLen, k, kLen;
-    var renderedLetters = this.textAnimator.renderedLetters;
-
-    var letters = this.textProperty.currentData.l;
-
-    len = letters.length;
-    var renderedLetter;
-    var lastFill = null, lastStroke = null, lastStrokeW = null, commands, pathArr;
-    for(i=0;i<len;i+=1){
-        if(letters[i].n){
-            continue;
-        }
-        renderedLetter = renderedLetters[i];
-        if(renderedLetter){
-            this.globalData.renderer.save();
-            this.globalData.renderer.ctxTransform(renderedLetter.p);
-            this.globalData.renderer.ctxOpacity(renderedLetter.o);
-        }
-        if(this.fill){
-            if(renderedLetter && renderedLetter.fc){
-                if(lastFill !== renderedLetter.fc){
-                    lastFill = renderedLetter.fc;
-                    ctx.fillStyle = renderedLetter.fc;
-                }
-            }else if(lastFill !== this.values.fill){
-                lastFill = this.values.fill;
-                ctx.fillStyle = this.values.fill;
-            }
-            commands = this.textSpans[i].elem;
-            jLen = commands.length;
-            this.globalData.canvasContext.beginPath();
-            for(j=0;j<jLen;j+=1) {
-                pathArr = commands[j];
-                kLen = pathArr.length;
-                this.globalData.canvasContext.moveTo(pathArr[0], pathArr[1]);
-                for (k = 2; k < kLen; k += 6) {
-                    this.globalData.canvasContext.bezierCurveTo(pathArr[k], pathArr[k + 1], pathArr[k + 2], pathArr[k + 3], pathArr[k + 4], pathArr[k + 5]);
-                }
-            }
-            this.globalData.canvasContext.closePath();
-            this.globalData.canvasContext.fill();
-            ///ctx.fillText(this.textSpans[i].val,0,0);
-        }
-        if(this.stroke){
-            if(renderedLetter && renderedLetter.sw){
-                if(lastStrokeW !== renderedLetter.sw){
-                    lastStrokeW = renderedLetter.sw;
-                    ctx.lineWidth = renderedLetter.sw;
-                }
-            }else if(lastStrokeW !== this.values.sWidth){
-                lastStrokeW = this.values.sWidth;
-                ctx.lineWidth = this.values.sWidth;
-            }
-            if(renderedLetter && renderedLetter.sc){
-                if(lastStroke !== renderedLetter.sc){
-                    lastStroke = renderedLetter.sc;
-                    ctx.strokeStyle = renderedLetter.sc;
-                }
-            }else if(lastStroke !== this.values.stroke){
-                lastStroke = this.values.stroke;
-                ctx.strokeStyle = this.values.stroke;
-            }
-            commands = this.textSpans[i].elem;
-            jLen = commands.length;
-            this.globalData.canvasContext.beginPath();
-            for(j=0;j<jLen;j+=1) {
-                pathArr = commands[j];
-                kLen = pathArr.length;
-                this.globalData.canvasContext.moveTo(pathArr[0], pathArr[1]);
-                for (k = 2; k < kLen; k += 6) {
-                    this.globalData.canvasContext.bezierCurveTo(pathArr[k], pathArr[k + 1], pathArr[k + 2], pathArr[k + 3], pathArr[k + 4], pathArr[k + 5]);
-                }
-            }
-            this.globalData.canvasContext.closePath();
-            this.globalData.canvasContext.stroke();
-            ///ctx.strokeText(letters[i].val,0,0);
-        }
-        if(renderedLetter) {
-            this.globalData.renderer.restore();
-        }
-    }
-};
 function CVEffects() {
 
 }
@@ -9021,6 +8778,204 @@ var animationManager = (function(){
         if(!_isFrozen && playingAnimationsNum){
             if(_stopped) {
                 window.requestAnimationFrame(first);
+                _stopped = false;
+            }
+        }
+    }
+
+    function freeze() {
+        _isFrozen = true;
+    }
+
+    function unfreeze() {
+        _isFrozen = false;
+        activate();
+    }
+
+    moduleOb.registerAnimation = registerAnimation;
+    moduleOb.loadAnimation = loadAnimation;
+    moduleOb.setSpeed = setSpeed;
+    moduleOb.setDirection = setDirection;
+    moduleOb.play = play;
+    moduleOb.pause = pause;
+    moduleOb.stop = stop;
+    moduleOb.togglePause = togglePause;
+    moduleOb.searchAnimations = searchAnimations;
+    moduleOb.resize = resize;
+    //moduleOb.start = start;
+    moduleOb.goToAndStop = goToAndStop;
+    moduleOb.destroy = destroy;
+    moduleOb.freeze = freeze;
+    moduleOb.unfreeze = unfreeze;
+    moduleOb.getRegisteredAnimations = getRegisteredAnimations;
+    return moduleOb;
+}());
+
+animationManager = (function(){
+    var moduleOb = {};
+    var registeredAnimations = [];
+    var initTime = 0;
+    var len = 0;
+    var playingAnimationsNum = 0;
+    var _stopped = true;
+    var _isFrozen = false;
+
+    function removeElement(ev){
+        var i = 0;
+        var animItem = ev.target;
+        while(i<len) {
+            if (registeredAnimations[i].animation === animItem) {
+                registeredAnimations.splice(i, 1);
+                i -= 1;
+                len -= 1;
+                if(!animItem.isPaused){
+                    subtractPlayingCount();
+                }
+            }
+            i += 1;
+        }
+    }
+
+    function registerAnimation(element, animationData){
+        if(!element){
+            return null;
+        }
+        var i=0;
+        while(i<len){
+            if(registeredAnimations[i].elem == element && registeredAnimations[i].elem !== null ){
+                return registeredAnimations[i].animation;
+            }
+            i+=1;
+        }
+        var animItem = new AnimationItem();
+        setupAnimation(animItem, element);
+        animItem.setData(element, animationData);
+        return animItem;
+    }
+
+    function getRegisteredAnimations() {
+        var i, len = registeredAnimations.length;
+        var animations = [];
+        for(i = 0; i < len; i += 1) {
+            animations.push(registeredAnimations[i].animation);
+        }
+        return animations;
+    }
+
+    function addPlayingCount(){
+        playingAnimationsNum += 1;
+        activate();
+    }
+
+    function subtractPlayingCount(){
+        playingAnimationsNum -= 1;
+    }
+
+    function setupAnimation(animItem, element){
+        animItem.addEventListener('destroy',removeElement);
+        animItem.addEventListener('_active',addPlayingCount);
+        animItem.addEventListener('_idle',subtractPlayingCount);
+        registeredAnimations.push({elem: element,animation:animItem});
+        len += 1;
+    }
+
+    function loadAnimation(params){
+        var animItem = new AnimationItem();
+        setupAnimation(animItem, null);
+        animItem.setParams(params);
+        return animItem;
+    }
+
+
+    function setSpeed(val,animation){
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.setSpeed(val, animation);
+        }
+    }
+
+    function setDirection(val, animation){
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.setDirection(val, animation);
+        }
+    }
+
+    function play(animation){
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.play(animation);
+        }
+    }
+    function resume(nowTime) {
+        var elapsedTime = nowTime - initTime;
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.advanceTime(elapsedTime);
+        }
+        initTime = nowTime;
+        if(playingAnimationsNum && !_isFrozen) {
+            requestAnimationFrame(resume);
+        } else {
+            _stopped = true;
+        }
+    }
+
+    function first(nowTime){
+        initTime = nowTime;
+        requestAnimationFrame(resume);
+    }
+
+    function pause(animation) {
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.pause(animation);
+        }
+    }
+
+    function goToAndStop(value,isFrame,animation) {
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.goToAndStop(value,isFrame,animation);
+        }
+    }
+
+    function stop(animation) {
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.stop(animation);
+        }
+    }
+
+    function togglePause(animation) {
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.togglePause(animation);
+        }
+    }
+
+    function destroy(animation) {
+        var i;
+        for(i=(len-1);i>=0;i-=1){
+            registeredAnimations[i].animation.destroy(animation);
+        }
+    }
+
+    function searchAnimations(animationData, standalone, renderer){
+        throw new Error('Cannot access DOM from worker thread');
+    }
+
+    function resize(){
+        var i;
+        for(i=0;i<len;i+=1){
+            registeredAnimations[i].animation.resize();
+        }
+    }
+
+    function activate(){
+        if(!_isFrozen && playingAnimationsNum){
+            if(_stopped) {
+                requestAnimationFrame(first);
                 _stopped = false;
             }
         }
@@ -9629,6 +9584,141 @@ AnimationItem.prototype.trigger = function(name){
         this.onDestroy.call(this,new BMDestroyEvent(name,this));
     }
 };
+
+AnimationItem.prototype.setParams = function(params) {
+    if(params.context){
+        this.context = params.context;
+    }
+    var animType = params.animType ? params.animType : params.renderer ? params.renderer : 'svg';
+    switch(animType){
+        case 'canvas':
+            this.renderer = new CanvasRenderer(this, params.rendererSettings);
+            break;
+        default:
+            throw new Error('Only canvas renderer is supported when using worker.');
+            break;
+    }
+    this.renderer.setProjectInterface(this.projectInterface);
+    this.animType = animType;
+
+    if(params.loop === '' || params.loop === null){
+    }else if(params.loop === false){
+        this.loop = false;
+    }else if(params.loop === true){
+        this.loop = true;
+    }else{
+        this.loop = parseInt(params.loop);
+    }
+    this.autoplay = 'autoplay' in params ? params.autoplay : true;
+    this.name = params.name ? params.name :  '';
+    this.autoloadSegments = params.hasOwnProperty('autoloadSegments') ? params.autoloadSegments :  true;
+    this.assetsPath = null;
+    if(params.animationData){
+        this.configAnimation(params.animationData);
+    }else if(params.path){
+        throw new Error('Canvas worker renderer cannot load animation from url');
+    }
+};
+
+AnimationItem.prototype.setData = function (wrapper, animationData) {
+    throw new Error('Cannot set data on wrapper for canvas worker renderer');
+};
+
+AnimationItem.prototype.includeLayers = function(data) {
+    if(data.op > this.animationData.op){
+        this.animationData.op = data.op;
+        this.totalFrames = Math.floor(data.op - this.animationData.ip);
+    }
+    var layers = this.animationData.layers;
+    var i, len = layers.length;
+    var newLayers = data.layers;
+    var j, jLen = newLayers.length;
+    for(j=0;j<jLen;j+=1){
+        i = 0;
+        while(i<len){
+            if(layers[i].id == newLayers[j].id){
+                layers[i] = newLayers[j];
+                break;
+            }
+            i += 1;
+        }
+    }
+    this.animationData.__complete = false;
+    dataManager.completeData(this.animationData,this.renderer.globalData.fontManager);
+    this.renderer.includeLayers(data.layers);
+    if(expressionsPlugin){
+        expressionsPlugin.initExpressions(this);
+    }
+    this.loadNextSegment();
+};
+
+AnimationItem.prototype.loadNextSegment = function() {
+    var segments = this.animationData.segments;
+    if(!segments || segments.length === 0 || !this.autoloadSegments){
+        this.timeCompleted = this.totalFrames;
+        return;
+    }
+    throw new Error('Cannot load multiple segments in worker.');
+};
+
+AnimationItem.prototype.loadSegments = function() {
+    var segments = this.animationData.segments;
+    if(!segments) {
+        this.timeCompleted = this.totalFrames;
+    }
+    this.loadNextSegment();
+};
+
+AnimationItem.prototype.imagesLoaded = null;
+
+AnimationItem.prototype.preloadImages = null;
+
+AnimationItem.prototype.configAnimation = function (animData) {
+    if(!this.renderer){
+        return;
+    }
+    this.animationData = animData;
+    this.totalFrames = Math.floor(this.animationData.op - this.animationData.ip);
+    this.renderer.configAnimation(animData);
+    if(!animData.assets){
+        animData.assets = [];
+    }
+    this.renderer.searchExtraCompositions(animData.assets);
+
+    this.assets = this.animationData.assets;
+    this.frameRate = this.animationData.fr;
+    this.firstFrame = Math.round(this.animationData.ip);
+    this.frameMult = this.animationData.fr / 1000;
+    this.loadSegments();
+    this.updaFrameModifier();
+    this.checkLoaded();
+};
+
+AnimationItem.prototype.waitForFontsLoaded = null;
+
+AnimationItem.prototype.checkLoaded = function () {
+    if (!this.isLoaded) {
+        this.isLoaded = true;
+        dataManager.completeData(this.animationData, null);
+        if(expressionsPlugin){
+            expressionsPlugin.initExpressions(this);
+        }
+        this.renderer.initItems();
+        this.gotoFrame();
+    }
+};
+
+AnimationItem.prototype.destroy = function (name) {
+    if ((name && this.name != name) || !this.renderer) {
+        return;
+    }
+    this.renderer.destroy();
+    this._cbs = null;
+    this.onEnterFrame = this.onLoopComplete = this.onComplete = this.onSegmentStart = this.onDestroy = null;
+    this.renderer = null;
+};
+
+AnimationItem.prototype.getPath = null;
 
 var Expressions = (function(){
     var ob = {};
@@ -12100,26 +12190,7 @@ GroupEffect.prototype.init = function(data,element){
 
     var _isFrozen = false;
 
-    function setLocationHref (href) {
-        locationHref = href;
-    }
-
-    function searchAnimations() {
-        if (standalone === true) {
-            animationManager.searchAnimations(animationData, standalone, renderer);
-        } else {
-            animationManager.searchAnimations();
-        }
-    }
-
-    function setSubframeRendering(flag) {
-        subframeEnabled = flag;
-    }
-
     function loadAnimation(params) {
-        if (standalone === true) {
-            params.animationData = JSON.parse(animationData);
-        }
         return animationManager.loadAnimation(params);
     }
 
@@ -12146,79 +12217,26 @@ GroupEffect.prototype.init = function(data,element){
         }
     }
 
-    function inBrowser() {
-        return typeof navigator !== 'undefined';
-    }
-
-    function installPlugin(type, plugin) {
-        if (type === 'expressions') {
-            expressionsPlugin = plugin;
-        }
-    }
-
-    function getFactory(name) {
-        switch (name) {
-            case "propertyFactory":
-                return PropertyFactory;
-            case "shapePropertyFactory":
-                return ShapePropertyFactory;
-            case "matrix":
-                return Matrix;
-        }
-    }
-
     lottiejs.play = animationManager.play;
     lottiejs.pause = animationManager.pause;
-    lottiejs.setLocationHref = setLocationHref;
     lottiejs.togglePause = animationManager.togglePause;
     lottiejs.setSpeed = animationManager.setSpeed;
     lottiejs.setDirection = animationManager.setDirection;
     lottiejs.stop = animationManager.stop;
-    lottiejs.searchAnimations = searchAnimations;
     lottiejs.registerAnimation = animationManager.registerAnimation;
     lottiejs.loadAnimation = loadAnimation;
-    lottiejs.setSubframeRendering = setSubframeRendering;
     lottiejs.resize = animationManager.resize;
-    //lottiejs.start = start;
     lottiejs.goToAndStop = animationManager.goToAndStop;
     lottiejs.destroy = animationManager.destroy;
     lottiejs.setQuality = setQuality;
-    lottiejs.inBrowser = inBrowser;
-    lottiejs.installPlugin = installPlugin;
     lottiejs.freeze = animationManager.freeze;
     lottiejs.unfreeze = animationManager.unfreeze;
     lottiejs.getRegisteredAnimations = animationManager.getRegisteredAnimations;
-    lottiejs.__getFactory = getFactory;
     lottiejs.version = '5.5.2';
 
-    function checkReady() {
-        if (document.readyState === "complete") {
-            clearInterval(readyStateCheckInterval);
-            searchAnimations();
-        }
-    }
-
-    function getQueryVariable(variable) {
-        var vars = queryString.split('&');
-        for (var i = 0; i < vars.length; i++) {
-            var pair = vars[i].split('=');
-            if (decodeURIComponent(pair[0]) == variable) {
-                return decodeURIComponent(pair[1]);
-            }
-        }
-    }
-    var standalone = '__[STANDALONE]__';
-    var animationData = '__[ANIMATIONDATA]__';
     var renderer = '';
-    if (standalone) {
-        var scripts = document.getElementsByTagName('script');
-        var index = scripts.length - 1;
-        var myScript = scripts[index] || {
-            src: ''
-        };
-        var queryString = myScript.src.replace(/^[^\?]+\??/, '');
-        renderer = getQueryVariable('renderer');
-    }
-    var readyStateCheckInterval = setInterval(checkReady, 100);
     return lottiejs;
-}));
+})({});
+
+module.exports = lottiejs;
+

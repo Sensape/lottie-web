@@ -53,24 +53,5 @@ var lottiejs = (function(window) {
     return lottiejs;
 })({});
 
-var animations = [];
-
-var onmessage = function(evt) {
-    var canvas = evt.data.canvas;
-    var params = evt.data.params;
-    var ctx = canvas.getContext("2d");
-    var animation = lottiejs.loadAnimation({
-        renderer: 'canvas',
-        loop: evt.data.loop,
-        autoplay: true,
-        animationData: evt.data.animationData,
-        rendererSettings: {
-            context: ctx,
-            scaleMode: 'noScale',
-            clearCanvas: true
-        }
-    });
-    animations.push(animation);
-    animation.play();
-};
+module.exports = lottiejs;
 

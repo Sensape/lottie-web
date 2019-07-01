@@ -1769,11 +1769,16 @@ function dataFunctionManager(){
 
     var moduleOb = {};
     moduleOb.completeData = completeData;
+    moduleOb.checkColors = checkColors;
+    moduleOb.checkChars = checkChars;
+    moduleOb.checkShapes = checkShapes;
+    moduleOb.completeLayers = completeLayers;
 
     return moduleOb;
 }
 
 var dataManager = dataFunctionManager();
+
 var FontManager = (function(){
 
     var maxWaitingTime = 5000;
@@ -8842,6 +8847,45 @@ SVGFillFilter.prototype.renderFrame = function(forceRender){
         this.matrixFilter.setAttribute('values','0 0 0 0 '+color[0]+' 0 0 0 0 '+color[1]+' 0 0 0 0 '+color[2]+' 0 0 0 '+opacity+' 0');
     }
 };
+function SVGGaussianBlurEffect(filter, filterManager){
+    // Outset the filter region by 100% on all sides to accommodate blur expansion.
+    filter.setAttribute('x','-100%');
+    filter.setAttribute('y','-100%');
+    filter.setAttribute('width','300%');
+    filter.setAttribute('height','300%');
+
+    this.filterManager = filterManager;
+    var feGaussianBlur = createNS('feGaussianBlur');
+    filter.appendChild(feGaussianBlur);
+    this.feGaussianBlur = feGaussianBlur;
+}
+
+SVGGaussianBlurEffect.prototype.renderFrame = function(forceRender){
+    if(forceRender || this.filterManager._mdf){
+        // Empirical value, matching AE's blur appearance.
+        var kBlurrinessToSigma = 0.3;
+        var sigma = this.filterManager.effectElements[0].p.v * kBlurrinessToSigma;
+
+        // Dimensions mapping:
+        //
+        //   1 -> horizontal & vertical
+        //   2 -> horizontal only
+        //   3 -> vertical only
+        //
+        var dimensions = this.filterManager.effectElements[1].p.v;
+        var sigmaX = (dimensions == 3) ? 0 : sigma;
+        var sigmaY = (dimensions == 2) ? 0 : sigma;
+
+        this.feGaussianBlur.setAttribute('stdDeviation', sigmaX + " " + sigmaY);
+
+        // Repeat edges mapping:
+        //
+        //   0 -> off -> duplicate
+        //   1 -> on  -> wrap
+        var edgeMode = (this.filterManager.effectElements[2].p.v == 1) ? 'wrap' : 'duplicate';
+        this.feGaussianBlur.setAttribute('edgeMode', edgeMode);
+    }
+}
 function SVGStrokeEffect(elem, filterManager){
     this.initialized = false;
     this.filterManager = filterManager;
@@ -9292,6 +9336,9 @@ function SVGEffects(elem){
         }else if(elem.data.ef[i].ty === 28){
             //count += 1;
             filterManager = new SVGMatte3Effect(fil, elem.effectsManager.effectElements[i], elem);
+        }else if(elem.data.ef[i].ty === 29){
+            count += 1;
+            filterManager = new SVGGaussianBlurEffect(fil, elem.effectsManager.effectElements[i]);
         }
         if(filterManager) {
             this.filters.push(filterManager);
