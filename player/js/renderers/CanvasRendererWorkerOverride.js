@@ -36,6 +36,11 @@ CanvasRenderer.prototype.configAnimation = function(animData){
     this.globalData.isDashed = false;
     this.globalData.progressiveLoad = this.renderConfig.progressiveLoad;
     this.globalData.transformCanvas = this.transformCanvas;
+    //by cs
+    this.globalData.getAssetData = this.animationItem.getAssetData.bind(this.animationItem);
+    this.globalData.getAssetsPath = this.animationItem.getAssetsPath.bind(this.animationItem);
+    this.globalData.imageLoader = this.animationItem.imagePreloader;
+    
     this.elements = createSizedArray(animData.layers.length);
 
     this.updateContainerSize();

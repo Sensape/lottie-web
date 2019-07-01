@@ -92,9 +92,16 @@ AnimationItem.prototype.getAssetData = function (id) {
     }
 };
 
-AnimationItem.prototype.imagesLoaded = null;
+AnimationItem.prototype.imagesLoaded = function() {
+    this.trigger('loaded_images');
+    this.checkLoaded()
+}
 
-AnimationItem.prototype.preloadImages = null;
+AnimationItem.prototype.preloadImages = function() {
+    this.imagePreloader.setAssetsPath(this.assetsPath);
+    this.imagePreloader.setPath(this.path);
+    this.imagePreloader.loadAssets(this.animationData.assets, this.imagesLoaded.bind(this));
+}
 
 AnimationItem.prototype.configAnimation = function (animData) {
     if(!this.renderer){
@@ -112,9 +119,11 @@ AnimationItem.prototype.configAnimation = function (animData) {
     this.frameRate = this.animationData.fr;
     this.firstFrame = Math.round(this.animationData.ip);
     this.frameMult = this.animationData.fr / 1000;
-    this.loadSegments();
+    this.trigger('config_ready');
+    this.preloadImages();
+    this.loadSegments();    
     this.updaFrameModifier();
-    this.checkLoaded();
+   // this.checkLoaded();
 };
 
 AnimationItem.prototype.waitForFontsLoaded = null;

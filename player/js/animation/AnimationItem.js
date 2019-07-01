@@ -27,6 +27,7 @@ var AnimationItem = function () {
     this._completedLoop = false;
     this.projectInterface = ProjectInterface();
     this.imagePreloader = new ImagePreloader();
+    console.log("New Animation Item", this)
 };
 
 extendPrototype([BaseEvent], AnimationItem);
